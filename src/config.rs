@@ -1,5 +1,5 @@
 use serde::de::{Deserialize, Deserializer};
-use serde::ser::{Serialize, Serializer};
+use serde::ser::{Serialize, Serializer, SerializeMap};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -241,6 +241,19 @@ impl Config {
     #[deprecated(since = "0.7.0", note = "please use 'try_into' instead")]
     pub fn deserialize<'de, T: Deserialize<'de>>(self) -> Result<T> {
         self.try_into()
+    }
+}
+
+impl Serialize for Config {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer {
+        let config_map = self.collect().unwrap();
+        let mut map = serializer.serialize_map(Some(config_map.len()))?;
+        for (k, v) in config_map {
+            map.serialize_entry(k.as_str(), &v)?;
+        }
+        map.end()
     }
 }
 

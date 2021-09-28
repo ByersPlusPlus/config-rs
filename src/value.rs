@@ -1,5 +1,7 @@
 use error::*;
 use serde::de::{Deserialize, Deserializer, Visitor};
+use serde::{Serialize, Serializer};
+use serde::ser::{SerializeMap, SerializeSeq};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
@@ -393,6 +395,34 @@ impl Value {
                 "a map",
             )),
         }
+    }
+}
+
+impl Serialize for Value {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer {
+            match &self.kind {
+                ValueKind::Nil => serializer.serialize_none(),
+                ValueKind::Boolean(b) => serializer.serialize_bool(*b),
+                ValueKind::Integer(i) => serializer.serialize_i64(*i),
+                ValueKind::Float(f) => serializer.serialize_f64(*f),
+                ValueKind::String(s) => serializer.serialize_str(s.as_str()),
+                ValueKind::Table(t) => {
+                    let mut map = serializer.serialize_map(Some(t.len()))?;
+                    for (k, v) in t {
+                        map.serialize_entry(k.as_str(), &v)?;
+                    }
+                    map.end()
+                },
+                ValueKind::Array(a) => {
+                    let mut seq = serializer.serialize_seq(Some(a.len()))?;
+                    for v in a {
+                        seq.serialize_element(&v)?;
+                    }
+                    seq.end()
+                },
+            }
     }
 }
 
